@@ -1,12 +1,10 @@
-![catch logo](catch-logo-small.png)
+This is a fork of [Phil Nash's header only CATCH C++ automated test case framework](https://github.com/philsquared/Catch), only with added thread safety. I've also replaced how the unit tests unique names are generated, his uses __LINE__, mine uses __COUNTER__ where the compiler provides that. The __COUNTER__ method provides much superior uniqueness of naming.
 
-*v1.1 build 13 (develop branch)*
+Thread safety has been naively implemented using C11 atomics, so you'll need a compiler with those. Any recent GCC, clang or MSVC will do. I don't claim I've made the entire library perfectly thread safe, but your basic checks and requires are thread safe, as is unit tests stdout/stderr redirection. It works well enough for me.
 
-Build status (on Travis CI) [![Build Status](https://travis-ci.org/philsquared/Catch.png)](https://travis-ci.org/philsquared/Catch)
+Build status (on Travis CI) [![Build Status](https://travis-ci.org/ned14/Catch-ThreadSafe.png)](https://travis-ci.org/ned14/Catch-ThreadSafe)
 
-[Please see this page if you are updating from a version before 1.0](docs/whats-changed.md)
-
-<a href="https://raw.githubusercontent.com/philsquared/Catch/develop/single_include/catch.hpp">[The latest, single header, version can be downloaded directly using this link]</a>
+<a href="https://raw.githubusercontent.com/ned14/Catch-ThreadSafe/develop/single_include/catch.hpp">[The latest, single header, version can be downloaded directly using this link]</a>
 
 ## What's the Catch?
 
@@ -22,5 +20,5 @@ This documentation comprises these three parts:
 The documentation will continue until morale improves
 
 ## More
-* Issues and bugs can be raised on the [Issue tracker on GitHub](https://github.com/philsquared/Catch/issues)
-* For discussion or questions please use [the dedicated Google Groups forum](https://groups.google.com/forum/?fromgroups#!forum/catch-forum)
+* Issues and bugs can be raised on the [Issue tracker on GitHub](https://github.com/philsquared/Catch/issues) except if it regards thread safety,
+in which case [use this issue tracker instead](https://github.com/philsquared/Catch-ThreadSafe/issues).
