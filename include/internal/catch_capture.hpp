@@ -31,6 +31,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_TEST( expr, resultDisposition, macroName ) \
     do { \
+        CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
         Catch::ResultBuilder __catchResult( macroName, CATCH_INTERNAL_LINEINFO, #expr, resultDisposition ); \
         try { \
             ( __catchResult->*expr ).endExpression(); \
@@ -54,6 +55,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_NO_THROW( expr, resultDisposition, macroName ) \
     do { \
+        CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
         Catch::ResultBuilder __catchResult( macroName, CATCH_INTERNAL_LINEINFO, #expr, resultDisposition ); \
         try { \
             expr; \
@@ -68,6 +70,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_THROWS( expr, resultDisposition, macroName ) \
     do { \
+        CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
         Catch::ResultBuilder __catchResult( macroName, CATCH_INTERNAL_LINEINFO, #expr, resultDisposition ); \
         if( __catchResult.allowThrows() ) \
             try { \
@@ -85,6 +88,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_THROWS_AS( expr, exceptionType, resultDisposition, macroName ) \
     do { \
+        CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
         Catch::ResultBuilder __catchResult( macroName, CATCH_INTERNAL_LINEINFO, #expr, resultDisposition ); \
         if( __catchResult.allowThrows() ) \
             try { \
@@ -107,6 +111,7 @@
 #ifdef CATCH_CONFIG_VARIADIC_MACROS
     #define INTERNAL_CATCH_MSG( messageType, resultDisposition, macroName, ... ) \
         do { \
+            CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
             Catch::ResultBuilder __catchResult( macroName, CATCH_INTERNAL_LINEINFO, "", resultDisposition ); \
             __catchResult << __VA_ARGS__ + ::Catch::StreamEndStop(); \
             __catchResult.captureResult( messageType ); \
@@ -115,6 +120,7 @@
 #else
     #define INTERNAL_CATCH_MSG( messageType, resultDisposition, macroName, log ) \
         do { \
+            CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
             Catch::ResultBuilder __catchResult( macroName, CATCH_INTERNAL_LINEINFO, "", resultDisposition ); \
             __catchResult << log + ::Catch::StreamEndStop(); \
             __catchResult.captureResult( messageType ); \
@@ -124,11 +130,14 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_INFO( log, macroName ) \
-    Catch::ScopedMessage INTERNAL_CATCH_UNIQUE_NAME( scopedMessage ) = Catch::MessageBuilder( macroName, CATCH_INTERNAL_LINEINFO, Catch::ResultWas::Info ) << log;
+  { CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
+    Catch::ScopedMessage INTERNAL_CATCH_UNIQUE_NAME( scopedMessage ) = Catch::MessageBuilder( macroName, CATCH_INTERNAL_LINEINFO, Catch::ResultWas::Info ) << log; \
+  }
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CHECK_THAT( arg, matcher, resultDisposition, macroName ) \
     do { \
+        CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
         Catch::ResultBuilder __catchResult( macroName, CATCH_INTERNAL_LINEINFO, #arg " " #matcher, resultDisposition ); \
         try { \
             std::string matcherAsString = ::Catch::Matchers::matcher.toString(); \

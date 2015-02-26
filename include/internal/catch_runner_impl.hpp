@@ -27,15 +27,35 @@
 
 namespace Catch {
 
-    class StreamRedirect {
+  // I wish we could replace sentry in the ostream for cout/cerr, but this hack will have to do
+  class locked_stringbuf : public std::streambuf
+  {
+    std::stringbuf *b;
+    CATCH_CONFIG_STL_MUTEX(catch_locked_stringbuf)
+  public:
+    locked_stringbuf(std::stringbuf *_b) : b(_b) { }
+    virtual std::streamsize xsputn(const char* s, std::streamsize n)
+    {
+      CATCH_CONFIG_STL_MUTEX_HOLD(catch_locked_stringbuf);
+      return b->sputn(s, n);
+    }
+    virtual std::streambuf::int_type overflow(std::streambuf::int_type c = std::streambuf::traits_type::eof())
+    {
+      CATCH_CONFIG_STL_MUTEX_HOLD(catch_locked_stringbuf);
+      return b->sputc((char) c);
+    }
+  };
+
+  class StreamRedirect {
 
     public:
         StreamRedirect( std::ostream& stream, std::string& targetString )
         :   m_stream( stream ),
             m_prevBuf( stream.rdbuf() ),
-            m_targetString( targetString )
+            m_targetString( targetString ),
+            m_lockedbuf( m_oss.rdbuf() )
         {
-            stream.rdbuf( m_oss.rdbuf() );
+            stream.rdbuf( &m_lockedbuf );
         }
 
         ~StreamRedirect() {
@@ -48,6 +68,7 @@ namespace Catch {
         std::streambuf* m_prevBuf;
         std::ostringstream m_oss;
         std::string& m_targetString;
+        locked_stringbuf m_lockedbuf;
     };
 
     ///////////////////////////////////////////////////////////////////////////

@@ -5,11 +5,16 @@ compiler:
   - gcc
 
 env:
-  - BUILD_TYPE=Debug
-  - BUILD_TYPE=Release
+  - BUILD_TYPE=Debug GCCVER=4.8
+  - BUILD_TYPE=Release GCCVER=4.8
+
+before_install:
+ - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test; fi
+ - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update -qq; fi
+ - if [ "$TRAVIS_OS_NAME" = "linux" ] && [ $GCCVER != "" ]; then sudo apt-get install -qq $GCCVER; fi
 
 install:
-  - cmake -Hprojects/CMake -BBuild -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+  - cmake -Hprojects/CMake -BBuild -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DUSE_CPP11=1
   - cd Build
   - make
   - cd ..

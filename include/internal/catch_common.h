@@ -23,6 +23,36 @@
 #define INTERNAL_CATCH_STRINGIFY2( expr ) #expr
 #define INTERNAL_CATCH_STRINGIFY( expr ) INTERNAL_CATCH_STRINGIFY2( expr )
 
+#ifndef CATCH_CONFIG_STL_MUTEX
+#  include <mutex>
+#  include <atomic>
+// The rigmarole below is to work around lack of thread safe static initialisation on <= VS2013
+#  define CATCH_CONFIG_STL_MUTEX(v) inline std::mutex &__global_lock_##v() \
+  { \
+    static std::mutex lock; \
+    return lock; \
+  } \
+  inline std::mutex &global_lock_##v() \
+  { \
+    static std::atomic<int> c; \
+    while(2!=c.load(std::memory_order_acquire)) \
+    { \
+      int expected=0; \
+      if(c.compare_exchange_weak(expected, 1, std::memory_order_acquire, std::memory_order_consume)) \
+      { \
+        __global_lock_##v(); \
+        c.store(2, std::memory_order_release); \
+        break; \
+      } \
+    } \
+    return __global_lock_##v(); \
+  }
+#  define CATCH_CONFIG_STL_MUTEX_HOLD(v) std::lock_guard<std::mutex> ___g(global_lock_##v());
+#endif
+// We define a total of two global locks, one to serialise checks, the other to serialise stdout/stderr redirection
+// The other lock is defined in catch_runner_impl.hpp
+CATCH_CONFIG_STL_MUTEX(internal_catch)
+
 #include <sstream>
 #include <stdexcept>
 #include <algorithm>

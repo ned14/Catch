@@ -1,6 +1,6 @@
 /*
  *  CATCH v1.1 build 13 (develop branch)
- *  Generated: 2014-12-30 18:47:08.984634
+ *  Generated: 2015-02-26 02:30:43.694000
  *  ----------------------------------------------------------
  *  This file has been merged from multiple headers. Please don't edit it directly
  *  Copyright (c) 2012 Two Blue Cubes Ltd. All rights reserved.
@@ -64,6 +64,36 @@
 
 #define INTERNAL_CATCH_STRINGIFY2( expr ) #expr
 #define INTERNAL_CATCH_STRINGIFY( expr ) INTERNAL_CATCH_STRINGIFY2( expr )
+
+#ifndef CATCH_CONFIG_STL_MUTEX
+#  include <mutex>
+#  include <atomic>
+// The rigmarole below is to work around lack of thread safe static initialisation on <= VS2013
+#  define CATCH_CONFIG_STL_MUTEX(v) inline std::mutex &__global_lock_##v() \
+  { \
+    static std::mutex lock; \
+    return lock; \
+  } \
+  inline std::mutex &global_lock_##v() \
+  { \
+    static std::atomic<int> c; \
+    while(2!=c.load(std::memory_order_acquire)) \
+    { \
+      int expected=0; \
+      if(c.compare_exchange_weak(expected, 1, std::memory_order_acquire, std::memory_order_consume)) \
+      { \
+        __global_lock_##v(); \
+        c.store(2, std::memory_order_release); \
+        break; \
+      } \
+    } \
+    return __global_lock_##v(); \
+  }
+#  define CATCH_CONFIG_STL_MUTEX_HOLD(v) std::lock_guard<std::mutex> ___g(global_lock_##v());
+#endif
+// We define a total of two global locks, one to serialise checks, the other to serialise stdout/stderr redirection
+// The other lock is defined in catch_runner_impl.hpp
+CATCH_CONFIG_STL_MUTEX(internal_catch)
 
 #include <sstream>
 #include <stdexcept>
@@ -1240,9 +1270,9 @@ std::string toString( std::vector<T,Allocator> const& v ) {
 }
 
 #ifdef CATCH_CPP11_OR_GREATER
-  /*
-    toString for tuples
-  */
+//
+//  toString for tuples
+//
 namespace TupleDetail {
   template<
       typename Tuple,
@@ -1586,6 +1616,7 @@ namespace Catch {
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_TEST( expr, resultDisposition, macroName ) \
     do { \
+        CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
         Catch::ResultBuilder __catchResult( macroName, CATCH_INTERNAL_LINEINFO, #expr, resultDisposition ); \
         try { \
             ( __catchResult->*expr ).endExpression(); \
@@ -1609,6 +1640,7 @@ namespace Catch {
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_NO_THROW( expr, resultDisposition, macroName ) \
     do { \
+        CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
         Catch::ResultBuilder __catchResult( macroName, CATCH_INTERNAL_LINEINFO, #expr, resultDisposition ); \
         try { \
             expr; \
@@ -1623,6 +1655,7 @@ namespace Catch {
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_THROWS( expr, resultDisposition, macroName ) \
     do { \
+        CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
         Catch::ResultBuilder __catchResult( macroName, CATCH_INTERNAL_LINEINFO, #expr, resultDisposition ); \
         if( __catchResult.allowThrows() ) \
             try { \
@@ -1640,6 +1673,7 @@ namespace Catch {
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_THROWS_AS( expr, exceptionType, resultDisposition, macroName ) \
     do { \
+        CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
         Catch::ResultBuilder __catchResult( macroName, CATCH_INTERNAL_LINEINFO, #expr, resultDisposition ); \
         if( __catchResult.allowThrows() ) \
             try { \
@@ -1661,6 +1695,7 @@ namespace Catch {
 #ifdef CATCH_CONFIG_VARIADIC_MACROS
     #define INTERNAL_CATCH_MSG( messageType, resultDisposition, macroName, ... ) \
         do { \
+            CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
             Catch::ResultBuilder __catchResult( macroName, CATCH_INTERNAL_LINEINFO, "", resultDisposition ); \
             __catchResult << __VA_ARGS__ + ::Catch::StreamEndStop(); \
             __catchResult.captureResult( messageType ); \
@@ -1669,6 +1704,7 @@ namespace Catch {
 #else
     #define INTERNAL_CATCH_MSG( messageType, resultDisposition, macroName, log ) \
         do { \
+            CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
             Catch::ResultBuilder __catchResult( macroName, CATCH_INTERNAL_LINEINFO, "", resultDisposition ); \
             __catchResult << log + ::Catch::StreamEndStop(); \
             __catchResult.captureResult( messageType ); \
@@ -1678,11 +1714,14 @@ namespace Catch {
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CATCH_INFO( log, macroName ) \
-    Catch::ScopedMessage INTERNAL_CATCH_UNIQUE_NAME( scopedMessage ) = Catch::MessageBuilder( macroName, CATCH_INTERNAL_LINEINFO, Catch::ResultWas::Info ) << log;
+  { CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
+    Catch::ScopedMessage INTERNAL_CATCH_UNIQUE_NAME( scopedMessage ) = Catch::MessageBuilder( macroName, CATCH_INTERNAL_LINEINFO, Catch::ResultWas::Info ) << log; \
+  }
 
 ///////////////////////////////////////////////////////////////////////////////
 #define INTERNAL_CHECK_THAT( arg, matcher, resultDisposition, macroName ) \
     do { \
+        CATCH_CONFIG_STL_MUTEX_HOLD(internal_catch); \
         Catch::ResultBuilder __catchResult( macroName, CATCH_INTERNAL_LINEINFO, #arg " " #matcher, resultDisposition ); \
         try { \
             std::string matcherAsString = ::Catch::Matchers::matcher.toString(); \
@@ -5148,15 +5187,35 @@ namespace Catch {
 
 namespace Catch {
 
-    class StreamRedirect {
+  // I wish we could replace sentry in the ostream for cout/cerr, but this hack will have to do
+  class locked_stringbuf : public std::streambuf
+  {
+    std::stringbuf *b;
+    CATCH_CONFIG_STL_MUTEX(catch_locked_stringbuf)
+  public:
+    locked_stringbuf(std::stringbuf *_b) : b(_b) { }
+    virtual std::streamsize xsputn(const char* s, std::streamsize n)
+    {
+      CATCH_CONFIG_STL_MUTEX_HOLD(catch_locked_stringbuf);
+      return b->sputn(s, n);
+    }
+    virtual std::streambuf::int_type overflow(std::streambuf::int_type c = std::streambuf::traits_type::eof())
+    {
+      CATCH_CONFIG_STL_MUTEX_HOLD(catch_locked_stringbuf);
+      return b->sputc((char) c);
+    }
+  };
+
+  class StreamRedirect {
 
     public:
         StreamRedirect( std::ostream& stream, std::string& targetString )
         :   m_stream( stream ),
             m_prevBuf( stream.rdbuf() ),
-            m_targetString( targetString )
+            m_targetString( targetString ),
+            m_lockedbuf( m_oss.rdbuf() )
         {
-            stream.rdbuf( m_oss.rdbuf() );
+            stream.rdbuf( &m_lockedbuf );
         }
 
         ~StreamRedirect() {
@@ -5169,6 +5228,7 @@ namespace Catch {
         std::streambuf* m_prevBuf;
         std::ostringstream m_oss;
         std::string& m_targetString;
+        locked_stringbuf m_lockedbuf;
     };
 
     ///////////////////////////////////////////////////////////////////////////
