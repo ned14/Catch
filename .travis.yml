@@ -11,9 +11,10 @@ env:
 before_install:
  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test; fi
  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update -qq; fi
- - if [ "$TRAVIS_OS_NAME" = "linux" ] && [ $GCCVER != "" ]; then sudo apt-get install -qq $GCCVER; fi
+ - if [ "$TRAVIS_OS_NAME" = "linux" ] && [ $CXX = "g++" ] && [ $GCCVER != "" ]; then sudo apt-get install -qq $GCCVER; fi
 
 install:
+  - if [ $CXX = "g++" ] && [ $GCCVER != "" ]; then export CXX=g++-$GCCVER; fi
   - cmake -Hprojects/CMake -BBuild -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DUSE_CPP11=1
   - cd Build
   - make

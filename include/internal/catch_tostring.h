@@ -202,9 +202,9 @@ std::string toString( std::vector<T,Allocator> const& v ) {
 
 
 #ifdef CATCH_CPP11_OR_GREATER
-  /*
-    toString for tuples
-  */
+//
+//  toString for tuples
+//
 namespace TupleDetail {
   template<
       typename Tuple,
