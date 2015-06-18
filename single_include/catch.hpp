@@ -1,6 +1,6 @@
 /*
- *  CATCH v1.1 build 13 (develop branch)
- *  Generated: 2015-02-26 02:30:43.694000
+ *  CATCH v1.1 build 19 (develop branch)
+ *  Generated: 2015-06-18 18:46:09.550702
  *  ----------------------------------------------------------
  *  This file has been merged from multiple headers. Please don't edit it directly
  *  Copyright (c) 2012 Two Blue Cubes Ltd. All rights reserved.
@@ -56,7 +56,7 @@
 
 // __COUNTER__ was introduced in VS 7 (VS.NET 2002), GCC 4.3 and clang 3.0
 #if (defined(_MSC_VER) && (_MSC_VER >= 1300)) \
-    || (defined(__GNUC__) && (__GNUC__ >= 4) && (__GNUC_MINOR__ >= 3)) \
+    || (defined(__GNUC__) && ((__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 3)))) \
     || (defined(__clang__) && (__clang_major__ >= 3))
 # undef INTERNAL_CATCH_UNIQUE_NAME
 # define INTERNAL_CATCH_UNIQUE_NAME( name ) INTERNAL_CATCH_UNIQUE_NAME_LINE( name, __COUNTER__ )
@@ -6811,7 +6811,7 @@ namespace Catch {
 namespace Catch {
 
     // These numbers are maintained by a script
-    Version libraryVersion( 1, 1, 13, "develop" );
+    Version libraryVersion( 1, 1, 19, "develop" );
 }
 
 // #included from: catch_message.hpp

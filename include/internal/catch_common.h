@@ -14,7 +14,7 @@
 
 // __COUNTER__ was introduced in VS 7 (VS.NET 2002), GCC 4.3 and clang 3.0
 #if (defined(_MSC_VER) && (_MSC_VER >= 1300)) \
-    || (defined(__GNUC__) && (__GNUC__ >= 4) && (__GNUC_MINOR__ >= 3)) \
+    || (defined(__GNUC__) && ((__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 3)))) \
     || (defined(__clang__) && (__clang_major__ >= 3))
 # undef INTERNAL_CATCH_UNIQUE_NAME
 # define INTERNAL_CATCH_UNIQUE_NAME( name ) INTERNAL_CATCH_UNIQUE_NAME_LINE( name, __COUNTER__ )
